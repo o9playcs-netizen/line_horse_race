@@ -1,1 +1,1 @@
-# line_horse_race
+# LINE群組使用的賽馬小遊戲
