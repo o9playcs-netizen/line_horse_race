@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>賽馬大作戰</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .info-item {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .info-item span {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .status-text {
+            font-size: 16px;
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+
+        .status-text.ready { background: #4ECDC4; color: white; }
+        .status-text.racing { background: #FFE66D; color: #333; }
+        .status-text.finished { background: #FF6B6B; color: white; }
+
+        .admin-btn {
+            padding: 8px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .admin-btn:hover { background: #764ba2; }
+
+        .start-area {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .start-btn {
+            padding: 15px 50px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .start-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+
+        .start-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .start-btn.racing { background: #FFE66D; color: #333; }
+        .start-btn.reset { background: #FF6B6B; }
+        /* 賽道區域 */
+        .race-container {
+            display: block;
+            margin-top: 20px;
+        }
+
+        .viewport {
+            width: 100%;
+            /*min-width: 320px;*/
+            height: 600px;
+            overflow: hidden;
+            border: 4px solid #333;
+            border-radius: 10px;
+            position: relative;
+            background: #87CEEB;
+        }
+
+        .track-background {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 732px;
+            background: linear-gradient(90deg, 
+                #8B4513 0%, #A0522D 20%, #8B4513 40%, 
+                #A0522D 60%, #8B4513 80%, #A0522D 100%
+            );
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+        }
+
+        .track-lane {
+            height: 200px;
+            position: relative;
+            border-bottom: 2px dashed rgba(255,255,255,0.5);
+        }
+
+        .track-lane:last-child { border-bottom: none; }
+
+        .finish-zone {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            background: linear-gradient(90deg,
+                rgba(255, 215, 0, 0.3) 0%,
+                rgba(255, 215, 0, 0.6) 50%,
+                rgba(255, 215, 0, 0.3) 100%
+            );
+            border-left: 3px solid #FFD700;
+            border-right: 3px solid #FFD700;
+            z-index: 1;
+        }
+
+        .finish-zone-label {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #FFD700;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .start-line {
+            position: absolute;
+            left: 50px;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            background: #fff;
+            z-index: 1;
+        }
+
+        .start-label {
+            position: absolute;
+            left: 45px;
+            top: -25px;
+            background: #4ECDC4;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 14px;
+            color: white;
+        }
+
+        .horse-runner {
+            position: absolute;
+            left: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            transition: left 0.05s linear;
+        }
+        /* 🔧 修復：精靈圖樣式優化 */
+        .horse-sprite {
+            width: 80px;
+            height: 60px;
+            display: block;
+            image-rendering: auto; /* 🔧 改為 auto 減少鋸齒 */
+            background-repeat: no-repeat;
+            /* 🔧 添加背景色避免閃爍 */
+            background-color: transparent;
+            /* 🔧 確保圖片載入前不顯示 */
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .horse-number-badge {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            z-index: 11;
+        }
+
+        .horse-1 .horse-number-badge { background: #FF6B6B; }
+        .horse-2 .horse-number-badge { background: #4ECDC4; }
+        .horse-3 .horse-number-badge { background: #FFE66D; color: #333; }
+        .horse-4 .horse-number-badge { background: #95E1D3; }
+
+        /* 🔧 移除距離顯示的 CSS */
+
+        .result-display {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+        }
+
+        .result-display.active { display: block; }
+
+        .result-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .result-ranking {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .rank-item {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 10px;
+            min-width: 80px;
+        }
+
+        .rank-number {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .admin-panel {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+        }
+
+        .admin-panel.active { display: block; }
+
+        .admin-panel h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .admin-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .admin-btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .admin-action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-set { background: #FFE66D; color: #333; }
+        .btn-copy { background: #4ECDC4; color: white; }
+
+        .seed-input {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .seed-input input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .speed-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 100;
+        }
+
+        .rank-badge {
+            position: absolute;
+            top: 25px;
+            left: 150%;
+            transform: translateX(-50%);
+            background: #FFD700;
+            color: #333;
+            padding: 2px 8px;
+            border-radius: 25px;
+            font-size: 25px;
+            font-weight: bold;
+            display: none;
+        }
+
+        .horse-runner.finished .rank-badge { display: block; }
+
+        .password-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .password-modal.active { display: flex; }
+
+        .password-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 350px;
+            width: 90%;
+        }
+
+        .password-content h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .password-content input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .password-content button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .password-content button.cancel {
+            background: #ddd;
+            color: #333;
+        }
+
+        .help-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 500px) {
+            .viewport { height: 600px; }
+            .result-ranking { flex-direction: column; gap: 10px; }
+            .start-btn { padding: 12px 30px; font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🏇 賽馬大作戰</h1>
+        
+        <div class="info-bar">
+            <div class="info-item">📅 場次：<span id="raceSeed">-</span></div>
+            <div class="info-item">🕐 時間：<span id="raceTime">-</span></div>
+            <div class="status-text ready" id="statusText">📊 準備開始</div>
+            <button class="admin-btn" onclick="showAdminPassword()">⚙️ 管理員</button>
+        </div>
+
+        <div class="start-area">
+            <button class="start-btn" id="startBtn" onclick="handleStartClick()">
+                🏁 開始比賽
+            </button>
+        </div>
+
+        <div class="race-container" id="raceContainer">
+            <div class="viewport" id="viewport">
+                <div class="speed-indicator" id="speedIndicator">速度：0 km/h</div>
+                <div class="track-background" id="trackBackground">
+                    <div class="start-line"></div>
+                    <div class="start-label">START</div>
+                    
+                    <div class="finish-zone" id="finishZone">
+                        <div class="finish-zone-label">🏁 終點範圍 🏁</div>
+                    </div>
+                    
+                    <div class="track-lane horse-1">
+                        <div class="horse-runner" id="horse1">
+                            <div class="horse-sprite" id="sprite1"></div>
+                            <div class="horse-number-badge">1</div>
+                            <div class="rank-badge" id="rank1">-</div>
+                        </div>
+                    </div>
+                    <div class="track-lane horse-2">
+                        <div class="horse-runner" id="horse2">
+                            <div class="horse-sprite" id="sprite2"></div>
+                            <div class="horse-number-badge">2</div>
+                            <div class="rank-badge" id="rank2">-</div>
+                        </div>
+                    </div>
+                    <div class="track-lane horse-3">
+                        <div class="horse-runner" id="horse3">
+                            <div class="horse-sprite" id="sprite3"></div>
+                            <div class="horse-number-badge">3</div>
+                            <div class="rank-badge" id="rank3">-</div>
+                        </div>
+                    </div>
+                    <div class="track-lane horse-4">
+                        <div class="horse-runner" id="horse4">
+                            <div class="horse-sprite" id="sprite4"></div>
+                            <div class="horse-number-badge">4</div>
+                            <div class="rank-badge" id="rank4">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 🔧 移除距離顯示區域 -->
+        </div>
+
+        <div class="result-display" id="resultDisplay">
+            <div class="result-title">🏆 比賽結果</div>
+            <div class="result-ranking" id="resultRanking"></div>
+            <div style="font-size:14px;opacity:0.8;">比賽種子：<span id="resultSeed"></span></div>
+        </div>
+
+        <div class="help-text" id="helpText">
+            💡 點擊「開始比賽」即可觀看賽馬過程，所有成員看到的結果都相同！
+        </div>
+
+        <div class="admin-panel" id="adminPanel">
+            <h3>⚙️ 管理員控制面板</h3>
+            <div class="admin-options">
+                <div class="admin-btn-group">
+                    <button class="admin-action-btn btn-copy" onclick="copyShareUrl()">🔗 複製分享網址</button>
+                </div>
+                <div class="seed-input">
+                    <input type="text" id="customSeed" placeholder="輸入自訂種子 (例如：20240101)">
+                    <button class="admin-action-btn btn-set" onclick="setCustomSeed()">設定種子</button>
+                </div>
+                <div style="margin-top:10px;font-size:12px;color:#666;">
+                    💡 提示：相同種子會產生相同比賽結果，分享網址給成員即可同步觀看
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="password-modal" id="passwordModal">
+        <div class="password-content">
+            <h3>🔐 管理員驗證</h3>
+            <input type="password" id="adminPassword" placeholder="輸入管理員密碼">
+            <button onclick="verifyAdmin()">驗證</button>
+            <button class="cancel" onclick="closePasswordModal()">取消</button>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 配置 ====================
+        const ADMIN_PASSWORD = 'aa998877';
+        const TRACK_LENGTH = 732;
+        const START_POSITION = 50;
+        const FINISH_ZONE_START = 600;
+        const FINISH_ZONE_END = 732;
+        const FINISH_ZONE_WIDTH = 132;
+
+        // ==================== 🎬 動畫配置 ====================
+        const HORSE_ANIMATION_CONFIG = {
+            1: {
+                rows: 2,
+                cols: 4,
+                frameWidth: 62.5,
+                frameHeight: 100,
+                spriteUrl: 'https://o9playcs-netizen.github.io/o9play_imgs/Run01.png',
+                totalWidth: 250,
+                totalHeight: 200,
+                usedFrames: 7,
+                baseAnimationSpeed: 100
+            },
+            2: {
+                rows: 2,
+                cols: 4,
+                frameWidth: 62.5,
+                frameHeight: 100,
+                spriteUrl: 'https://o9playcs-netizen.github.io/o9play_imgs/Run02.png',
+                totalWidth: 250,
+                totalHeight: 200,
+                usedFrames: 7,
+                baseAnimationSpeed: 100
+            },
+            3: {
+                rows: 4,
+                cols: 4,
+                frameWidth: 62.5,
+                frameHeight: 100,
+                spriteUrl: 'https://o9playcs-netizen.github.io/o9play_imgs/Run05.png',
+                totalWidth: 250,
+                totalHeight: 200,
+                usedFrames: 5,
+                baseAnimationSpeed: 100
+            },
+            4: {
+                rows: 3,
+                cols: 4,
+                frameWidth: 62.5,
+                frameHeight: 100,
+                spriteUrl: 'https://o9playcs-netizen.github.io/o9play_imgs/Run04.png',
+                totalWidth: 250,
+                totalHeight: 200,
+                usedFrames: 7,
+                baseAnimationSpeed: 100
+            }
+        };
+
+        const SPEED_MAPPING = {
+            minSpeed: 1,
+            maxSpeed: 5,
+            minAnimSpeed: 150,
+            maxAnimSpeed: 40
+        };
+
+        // ==================== 狀態變數 ====================
+        let isAdmin = false;
+        let isRacing = false;
+        let raceFinished = false;
+        let horsePositions = [0, 0, 0, 0];
+        let horseSpeeds = [0, 0, 0, 0];
+        let horseFinished = [false, false, false, false];
+        let horseFinishOrder = [];
+        let trackScrollPosition = 0;
+        let finishCount = 0;
+        let raceSeed = '';
+        let speedSequences = [];
+        let horseAnimationData = {};
+        let spriteImagesLoaded = {};
+        let animationFrameId = null;
+        let raceIntervalId = null;
+
+        // ==================== 初始化 ====================
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const seedFromUrl = urlParams.get('seed');
+            
+            if (seedFromUrl) {
+                raceSeed = seedFromUrl;
+            } else {
+                raceSeed = generateSeed();
+                updateUrlSeed();
+            }
+            
+            document.getElementById('raceSeed').textContent = raceSeed;
+            document.getElementById('resultSeed').textContent = raceSeed;
+            
+            preloadSprites();
+            
+            for (let i = 1; i <= 4; i++) {
+                horseAnimationData[i] = {
+                    currentFrame: 0,
+                    lastUpdateTime: 0
+                };
+            }
+            
+            checkSavedResult();
+            initHorses();
+            updateStartTime();
+        };
+
+        function preloadSprites() {
+            for (let horseNum = 1; horseNum <= 4; horseNum++) {
+                const config = HORSE_ANIMATION_CONFIG[horseNum];
+                const img = new Image();
+                img.src = config.spriteUrl;
+                img.onload = function() {
+                    spriteImagesLoaded[horseNum] = true;
+                    console.log(`✅ 馬${horseNum} 精靈圖載入成功`);
+                    updateHorseSprite(horseNum);
+                };
+                img.onerror = function() {
+                    spriteImagesLoaded[horseNum] = false;
+                    console.warn(`⚠️ 馬${horseNum} 精靈圖載入失敗，將使用備用圖案`);
+                };
+            }
+        }
+
+        function updateHorseSprite(horseNum) {
+            const config = HORSE_ANIMATION_CONFIG[horseNum];
+            const sprite = document.getElementById(`sprite${horseNum}`);
+            
+            if (!sprite) return;
+            
+            sprite.style.width = config.frameWidth + 'px';
+            sprite.style.height = config.frameHeight + 'px';
+            
+            if (spriteImagesLoaded[horseNum]) {
+                sprite.style.backgroundImage = `url('${config.spriteUrl}')`;
+                sprite.style.backgroundSize = `${config.totalWidth}px ${config.totalHeight}px`;
+                sprite.style.backgroundPosition = '0 0';
+            } else {
+                /*const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3'];
+                sprite.style.background = colors[horseNum - 1];
+                sprite.style.borderRadius = '5px';*/
+            }
+        }
+
+        function generateSeed() {
+            const date = new Date();
+            return date.getFullYear().toString() + 
+                   (date.getMonth()+1).toString().padStart(2,'0') + 
+                   date.getDate().toString().padStart(2,'0');
+        }
+
+        function updateUrlSeed() {
+            const newUrl = window.location.protocol + "//" + 
+                          window.location.host + 
+                          window.location.pathname + 
+                          '?seed=' + raceSeed;
+            window.history.replaceState({path: newUrl}, '', newUrl);
+        }
+
+        function checkSavedResult() {
+            const savedResult = localStorage.getItem('raceResult_' + raceSeed);
+            if (savedResult) {
+                const result = JSON.parse(savedResult);
+                horseFinishOrder = result.order;
+                raceFinished = true;
+                
+                showFinalPositions();
+                updateStatus('finished', '✅ 比賽已結束');
+                showResult();
+                
+                const startBtn = document.getElementById('startBtn');
+                startBtn.textContent = '🔄 重置比賽';
+                startBtn.classList.add('reset');
+                startBtn.disabled = false;
+                
+                document.getElementById('helpText').textContent = '✅ 比賽已結束，點擊按鈕可重置並開始新一輪比賽';
+            } else {
+                updateStatus('ready', '📊 準備開始');
+                document.getElementById('helpText').textContent = '💡 點擊「開始比賽」即可觀看賽馬過程，所有成員看到的結果都相同！';
+            }
+        }
+
+        function updateStartTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('raceTime').textContent = timeStr;
+        }
+
+        function handleStartClick() {
+            if (isRacing) return;
+            
+            if (raceFinished) {
+                resetGame();
+            } else {
+                startRace();
+            }
+        }
+
+        function showAdminPassword() {
+            if (isAdmin) {
+                toggleAdminPanel();
+            } else {
+                document.getElementById('passwordModal').classList.add('active');
+            }
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.remove('active');
+            document.getElementById('adminPassword').value = '';
+        }
+
+        function verifyAdmin() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === ADMIN_PASSWORD) {
+                isAdmin = true;
+                closePasswordModal();
+                toggleAdminPanel();
+                alert('✅ 管理員驗證成功！');
+            } else {
+                alert('❌ 密碼錯誤！');
+            }
+        }
+
+        function toggleAdminPanel() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('active');
+        }
+
+        function setCustomSeed() {
+            const customSeed = document.getElementById('customSeed').value.trim();
+            if (customSeed) {
+                if (!confirm('⚠️ 變更種子將開始新一輪比賽，確定要繼續嗎？')) return;
+                raceSeed = customSeed;
+                updateUrlSeed();
+                document.getElementById('raceSeed').textContent = raceSeed;
+                document.getElementById('resultSeed').textContent = raceSeed;
+                
+                localStorage.removeItem('raceResult_' + raceSeed);
+                
+                raceFinished = false;
+                initHorses();
+                updateStatus('ready', '📊 準備開始');
+                document.getElementById('resultDisplay').classList.remove('active');
+                
+                const startBtn = document.getElementById('startBtn');
+                startBtn.textContent = '🏁 開始比賽';
+                startBtn.classList.remove('reset');
+                startBtn.disabled = false;
+                
+                document.getElementById('helpText').textContent = '💡 點擊「開始比賽」即可觀看賽馬過程，所有成員看到的結果都相同！';
+                
+                alert('✅ 種子已設定為：' + raceSeed + '\n成員需重新整理頁面以同步');
+            }
+        }
+
+        function copyShareUrl() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('✅ 網址已複製！\n' + url);
+            }).catch(() => {
+                prompt('請複製以下網址：', url);
+            });
+        }
+
+        function initHorses() {
+            for (let i = 1; i <= 4; i++) {
+                horsePositions[i-1] = START_POSITION;
+                document.getElementById(`horse${i}`).style.left = START_POSITION + 'px';
+                document.getElementById(`rank${i}`).textContent = '-';
+                document.getElementById(`horse${i}`).classList.remove('finished');
+                
+                updateHorseSprite(i);
+                
+                horseAnimationData[i] = {
+                    currentFrame: 0,
+                    lastUpdateTime: 0
+                };
+            }
+            document.getElementById('trackBackground').style.transform = 'translateX(0px)';
+            document.getElementById('speedIndicator').textContent = '速度：0 km/h';
+        }
+
+        function resetRaceState() {
+            horsePositions = [START_POSITION, START_POSITION, START_POSITION, START_POSITION];
+            horseSpeeds = [0, 0, 0, 0];
+            horseFinished = [false, false, false, false];
+            horseFinishOrder = [];
+            finishCount = 0;
+            trackScrollPosition = 0;
+            
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`horse${i}`).style.left = START_POSITION + 'px';
+                document.getElementById(`rank${i}`).textContent = '-';
+                document.getElementById(`horse${i}`).classList.remove('finished');
+                
+                updateHorseSprite(i);
+                
+                horseAnimationData[i] = {
+                    currentFrame: 0,
+                    lastUpdateTime: 0
+                };
+            }
+            
+            document.getElementById('trackBackground').style.transform = 'translateX(0px)';
+            document.getElementById('speedIndicator').textContent = '速度：0 km/h';
+            document.getElementById('resultDisplay').classList.remove('active');
+        }
+
+        function resetGame() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            if (raceIntervalId) {
+                clearInterval(raceIntervalId);
+                raceIntervalId = null;
+            }
+            
+            localStorage.removeItem('raceResult_' + raceSeed);
+            
+            raceFinished = false;
+            isRacing = false;
+            
+            resetRaceState();
+            updateStatus('ready', '📊 準備開始');
+            
+            const startBtn = document.getElementById('startBtn');
+            startBtn.textContent = '🏁 開始比賽';
+            startBtn.classList.remove('reset');
+            startBtn.disabled = false;
+            
+            document.getElementById('helpText').textContent = '💡 點擊「開始比賽」即可觀看賽馬過程，所有成員看到的結果都相同！';
+        }
+
+        function startRace() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            if (raceIntervalId) {
+                clearInterval(raceIntervalId);
+                raceIntervalId = null;
+            }
+            
+            isRacing = true;
+            raceFinished = false;
+            
+            resetRaceState();
+            
+            updateStatus('racing', '🏇 比賽進行中...');
+            
+            const startBtn = document.getElementById('startBtn');
+            startBtn.textContent = '🏇 比賽進行中...';
+            startBtn.classList.add('racing');
+            startBtn.disabled = true;
+            
+            document.getElementById('helpText').textContent = '🏇 比賽進行中，請耐心等待結果...';
+            
+            const seededRandom = createSeededRandom(raceSeed);
+            
+            speedSequences = [];
+            for (let i = 0; i < 4; i++) {
+                speedSequences[i] = [];
+                for (let j = 0; j < 200; j++) {
+                    speedSequences[i].push(seededRandom() * 4 + 1);
+                }
+            }
+            
+            document.getElementById('finishZone').style.left = FINISH_ZONE_START + 'px';
+            document.getElementById('finishZone').style.width = FINISH_ZONE_WIDTH + 'px';
+            
+            startAnimationLoop();
+            
+            raceAnimation();
+        }
+
+        function startAnimationLoop() {
+            function animate(timestamp) {
+                if (!isRacing) return;
+                
+                for (let i = 1; i <= 4; i++) {
+                    if (!horseFinished[i-1]) {
+                        updateHorseAnimation(i, timestamp, horseSpeeds[i-1]);
+                    }
+                }
+                
+                animationFrameId = requestAnimationFrame(animate);
+            }
+            
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function updateHorseAnimation(horseNum, timestamp, currentSpeed) {
+            const config = HORSE_ANIMATION_CONFIG[horseNum];
+            const animData = horseAnimationData[horseNum];
+            const sprite = document.getElementById(`sprite${horseNum}`);
+            
+            if (!spriteImagesLoaded[horseNum]) return;
+            
+            const animSpeed = calculateAnimationSpeed(currentSpeed, config.baseAnimationSpeed);
+            
+            if (timestamp - animData.lastUpdateTime >= animSpeed) {
+                animData.currentFrame = (animData.currentFrame + 1) % config.usedFrames;
+                
+                const totalFrames = config.rows * config.cols;
+                if (animData.currentFrame >= totalFrames) {
+                    animData.currentFrame = 0;
+                }
+                
+                const row = Math.floor(animData.currentFrame / config.cols);
+                const col = animData.currentFrame % config.cols;
+                
+                if (row >= config.rows) {
+                    animData.currentFrame = 0;
+                    sprite.style.backgroundPosition = '0 0';
+                    animData.lastUpdateTime = timestamp;
+                    return;
+                }
+                
+                const offsetX = -(col * config.frameWidth);
+                const offsetY = -(row * config.frameHeight);
+                
+                sprite.style.backgroundPosition = `${offsetX}px ${offsetY}px`;
+                
+                animData.lastUpdateTime = timestamp;
+            }
+        }
+
+        function calculateAnimationSpeed(currentSpeed, baseSpeed) {
+            const { minSpeed, maxSpeed, minAnimSpeed, maxAnimSpeed } = SPEED_MAPPING;
+            
+            const clampedSpeed = Math.max(minSpeed, Math.min(maxSpeed, currentSpeed));
+            const speedRatio = (clampedSpeed - minSpeed) / (maxSpeed - minSpeed);
+            const animSpeed = minAnimSpeed - (speedRatio * (minAnimSpeed - maxAnimSpeed));
+            
+            return animSpeed;
+        }
+
+        function createSeededRandom(seed) {
+            let hash = 0;
+            for (let i = 0; i < seed.length; i++) {
+                hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+                hash = hash & hash;
+            }
+            let state = Math.abs(hash);
+            return function() {
+                state = (state * 9301 + 49297) % 233280;
+                return state / 233280;
+            };
+        }
+
+        function raceAnimation() {
+            let frameCount = 0;
+            let leaderHorse = 0;
+            
+            raceIntervalId = setInterval(() => {
+                const currentViewportWidth = getViewportWidth();
+                let maxPosition = START_POSITION;
+                
+                for (let i = 0; i < 4; i++) {
+                    if (!horseFinished[i]) {
+                        horseSpeeds[i] = speedSequences[i][frameCount % 200];
+                        horsePositions[i] += horseSpeeds[i];
+                        
+                        if (horsePositions[i] >= FINISH_ZONE_START && horsePositions[i] <= FINISH_ZONE_END) {
+                            horseFinished[i] = true;
+                            finishCount++;
+                            horseFinishOrder.push(i + 1);
+                            
+                            const rankBadge = document.getElementById(`rank${i+1}`);
+                            rankBadge.textContent = getRankSymbol(finishCount);
+                            document.getElementById(`horse${i+1}`).classList.add('finished');
+                        } else if (horsePositions[i] > FINISH_ZONE_END) {
+                            horsePositions[i] = FINISH_ZONE_END;
+                            horseFinished[i] = true;
+                            finishCount++;
+                            horseFinishOrder.push(i + 1);
+                            
+                            const rankBadge = document.getElementById(`rank${i+1}`);
+                            rankBadge.textContent = getRankSymbol(finishCount);
+                            document.getElementById(`horse${i+1}`).classList.add('finished');
+                        }
+                        
+                        if (horsePositions[i] > maxPosition) {
+                            maxPosition = horsePositions[i];
+                            leaderHorse = i;
+                        }
+                        
+                        document.getElementById(`horse${i+1}`).style.left = horsePositions[i] + 'px';
+                        
+                        // 🔧 移除距離更新代碼
+                    }
+                }
+                
+                const targetScroll = maxPosition - (currentViewportWidth * 0.3);
+                trackScrollPosition = Math.max(0, Math.min(targetScroll, TRACK_LENGTH - currentViewportWidth));
+                
+                document.getElementById('trackBackground').style.transform = 
+                    `translateX(-${trackScrollPosition}px)`;
+                
+                const speed = Math.floor(horseSpeeds[leaderHorse] * 10);
+                document.getElementById('speedIndicator').textContent = `速度：${speed} km/h`;
+                
+                frameCount++;
+                
+                if (finishCount >= 4) {
+                    clearInterval(raceIntervalId);
+                    raceIntervalId = null;
+                    
+                    raceFinished = true;
+                    isRacing = false;
+                    
+                    if (animationFrameId) {
+                        cancelAnimationFrame(animationFrameId);
+                        animationFrameId = null;
+                    }
+                    
+                    saveRaceResult();
+                    
+                    setTimeout(() => alignFinishLine(currentViewportWidth), 500);
+                    setTimeout(() => showResult(), 1000);
+                    
+                    const startBtn = document.getElementById('startBtn');
+                    startBtn.textContent = '🔄 重置比賽';
+                    startBtn.classList.remove('racing');
+                    startBtn.classList.add('reset');
+                    startBtn.disabled = false;
+                    
+                    document.getElementById('helpText').textContent = '✅ 比賽已結束，點擊按鈕可重置並開始新一輪比賽';
+                }
+            }, 50);
+        }
+
+        function saveRaceResult() {
+            const result = {
+                seed: raceSeed,
+                order: horseFinishOrder,
+                timestamp: new Date().toISOString(),
+                speedSequences: speedSequences
+            };
+            localStorage.setItem('raceResult_' + raceSeed, JSON.stringify(result));
+        }
+
+        function showFinalPositions() {
+            for (let i = 0; i < 4; i++) {
+                const horseNum = horseFinishOrder[i];
+                horsePositions[horseNum-1] = FINISH_ZONE_START + (i * 50);
+                document.getElementById(`horse${horseNum}`).style.left = horsePositions[horseNum-1] + 'px';
+                
+                const rankBadge = document.getElementById(`rank${horseNum}`);
+                rankBadge.textContent = getRankSymbol(i + 1);
+                document.getElementById(`horse${horseNum}`).classList.add('finished');
+            }
+            
+            const currentViewportWidth = getViewportWidth();
+            const finalScroll = FINISH_ZONE_END - currentViewportWidth + 50;
+            trackScrollPosition = Math.max(0, Math.min(finalScroll, TRACK_LENGTH - currentViewportWidth));
+            document.getElementById('trackBackground').style.transform = 
+                `translateX(-${trackScrollPosition}px)`;
+        }
+
+        function alignFinishLine(viewportWidth) {
+            const finalScroll = FINISH_ZONE_END - viewportWidth + 50;
+            trackScrollPosition = Math.max(0, Math.min(finalScroll, TRACK_LENGTH - viewportWidth));
+            
+            document.getElementById('trackBackground').style.transform = 
+                `translateX(-${trackScrollPosition}px)`;
+        }
+
+        function getRankSymbol(rank) {
+            const symbols = ['🥇', '🥈', '🥉', '4️⃣'];
+            return symbols[rank - 1] || rank;
+        }
+
+        function showResult() {
+            const resultDisplay = document.getElementById('resultDisplay');
+            const resultRanking = document.getElementById('resultRanking');
+            
+            let rankingHtml = '';
+            for (let i = 0; i < horseFinishOrder.length; i++) {
+                const horseNum = horseFinishOrder[i];
+                const symbol = getRankSymbol(i + 1);
+                const color = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3'][horseNum - 1];
+                rankingHtml += `
+                    <div class="rank-item" style="border-left:4px solid ${color}">
+                        <div class="rank-number">${symbol}</div>
+                        <div>${horseNum}號馬</div>
+                    </div>
+                `;
+            }
+            
+            resultRanking.innerHTML = rankingHtml;
+            resultDisplay.classList.add('active');
+            
+            updateStatus('finished', '✅ 比賽已結束');
+        }
+
+        function updateStatus(status, text) {
+            const statusText = document.getElementById('statusText');
+            statusText.textContent = text;
+            statusText.className = 'status-text ' + status;
+        }
+
+        function getViewportWidth() {
+            return document.getElementById('viewport').clientWidth;
+        }
+
+        window.addEventListener('resize', () => {
+            if (isRacing || raceFinished) {
+                const currentViewportWidth = getViewportWidth();
+                const maxPosition = Math.max(...horsePositions);
+                const targetScroll = maxPosition - (currentViewportWidth * 0.3);
+                trackScrollPosition = Math.max(0, Math.min(targetScroll, TRACK_LENGTH - currentViewportWidth));
+                
+                document.getElementById('trackBackground').style.transform = 
+                    `translateX(-${trackScrollPosition}px)`;
+            }
+        });
+    </script>
+</body>
+</html>
